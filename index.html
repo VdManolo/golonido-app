@@ -185,7 +185,8 @@
               if (nido.user_id === userId) {
                 deleteBtn = "<button class='deleteNidoBtn' data-nido-id='" + nido.id + "' style='margin-top:5px; padding:5px 10px; cursor:pointer; background-color: #ff4444; color: white; border: none; border-radius: 3px;'>Eliminar</button>";
               }
-              markerContent.innerHTML = "Nido de " + nido.tipo + "<br><img src='" + nido.foto_url + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br>" + deleteBtn;
+              var tipoTexto = nido.tipo === 'Golondrina' ? 'Nido de Golondrina' : 'Otro nido';
+              markerContent.innerHTML = tipoTexto + "<br><img src='" + nido.foto_url + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br>" + deleteBtn;
               
               marker.bindPopup(markerContent);
 
@@ -317,7 +318,8 @@
                   var marker = L.marker([e.latlng.lat, e.latlng.lng], {icon: customIcon}).addTo(map);
                   
                   var markerContent = document.createElement('div');
-                  markerContent.innerHTML = "Nido de " + type + "<br><img src='" + photoUrl + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br><button class='deleteNidoBtn' data-nido-id='" + nidoId + "' style='margin-top:5px; padding:5px 10px; cursor:pointer; background-color: #ff4444; color: white; border: none; border-radius: 3px;'>Eliminar</button>";
+                  var tipoTexto = type === 'Golondrina' ? 'Nido de Golondrina' : 'Otro nido';
+                  markerContent.innerHTML = tipoTexto + "<br><img src='" + photoUrl + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br><button class='deleteNidoBtn' data-nido-id='" + nidoId + "' style='margin-top:5px; padding:5px 10px; cursor:pointer; background-color: #ff4444; color: white; border: none; border-radius: 3px;'>Eliminar</button>";
                   
                   var deleteBtn = markerContent.querySelector('button');
                   deleteBtn.onclick = async function(evt) {
