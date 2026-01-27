@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GoloNido</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Esperar a que Supabase cargue
+    function inicializar() {
+      if (!window.supabase) {
+        setTimeout(inicializar, 100);
+        return;
+      }
+
+      // Configurar Supabase
+      const supabaseUrl = 'https://jazskweggyiqbhgvxcou.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphenNrd2VnZ3lpcWJoZ3Z4Y291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1NDkxMjYsImV4cCI6MjA4NTEyNTEyNn0.YkmVFYUQ8j0GZJsQTmLFAhM1Rm9Gyp6w_QBk3wcnkAc';
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+      // Generar ID único para el usuario (sin auth)
+      let userId = localStorage.getItem('golonido_user_id');
+      if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('golonido_user_id', userId);
+      }
+
+      var map = L.map('map').setView([37.4889, -2.7711], 15);
+
+      // Limitar el zoom y el desplazamiento del mapa a la comarca
+      var mapBounds = L.latLngBounds(
+        [37.470, -2.800],  // Suroeste
+        [37.510, -2.730]   // Noreste
+      );
+      
+      map.setMaxBounds(mapBounds);
+      map.setMinZoom(14);
+      map.setMaxZoom(18);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      // Límites de la comarca en forma de L
+      var rect1 = {
+        north: 37.505114,
+        south: 37.475114,
+        east: -2.755077,
+        west: -2.790277
+      };
+
+      var rect2 = {
+        north: 37.505114,
+        south: 37.495114,
+        east: -2.738077,
+        west: -2.755077
+      };
+
+      // Función para verificar si un punto está dentro de la comarca
+      function isInsideComarca(lat, lng) {
+        var inRect1 = lat <= rect1.north && lat >= rect1.south && lng >= rect1.west && lng <= rect1.east;
+        var inRect2 = lat <= rect2.north && lat >= rect2.south && lng >= rect2.west && lng <= rect2.east;
+        return inRect1 || inRect2;
+      }
+
+      L.polygon([
+        [rect1.north, rect1.west],
+        [rect1.north, rect2.east],
+        [rect2.south, rect2.east],
+        [rect2.south, rect1.east],
+        [rect1.south, rect1.east],
+        [rect1.south, rect1.west]
+      ], {
+        color: 'red',
+        weight: 2,
+        opacity: 0.8,
+        fill: false
+      }).addTo(map);
+
+      // Crear un límite rojo transparente fuera de la comarca
+      var maxBounds = {
+        north: 38,
+        south: 37,
+        east: -2.7,
+        west: -3
+      };
+
+      // Rectángulo norte
+      L.rectangle([[rect1.north, maxBounds.west], [maxBounds.north, maxBounds.east]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Rectángulo sur
+      L.rectangle([[maxBounds.south, maxBounds.west], [rect1.south, maxBounds.east]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Rectángulo oeste
+      L.rectangle([[rect1.north, maxBounds.west], [rect1.south, rect1.west]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Rectángulo este
+      L.rectangle([[rect2.north, rect2.east], [rect2.south, maxBounds.east]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Área entre los dos rectángulos
+      L.rectangle([[rect2.south, rect2.west], [rect1.south, rect2.east]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Rectángulo al este
+      L.rectangle([[rect2.south, rect2.east], [rect1.south, maxBounds.east]], {
+        color: 'red',
+        weight: 0,
+        fill: true,
+        fillColor: 'red',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      // Función para cargar nidos desde Supabase
+      async function cargarNidos() {
+        try {
+          console.log('Cargando nidos...');
+          let { data: nidos, error } = await supabase.from('nidos').select('*');
+          
+          console.log('Respuesta de Supabase:', { nidos, error });
+
+          if (error) {
+            console.error('Error cargando nidos:', error);
+            return;
+          }
+
+          if (!nidos || nidos.length === 0) {
+            console.log('No hay nidos aún');
+            return;
+          }
+
+          console.log('Cargando ' + nidos.length + ' nidos');
+
+          nidos.forEach(nido => {
+            try {
+              console.log('Procesando nido:', nido);
+              var iconColor = nido.tipo === 'Golondrina' ? '#0066FF' : '#00AA00';
+              
+              var customIcon = L.divIcon({
+                html: '<div style="background-color:' + iconColor + '; width:30px; height:30px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                iconSize: [30, 30],
+                className: 'custom-marker'
+              });
+
+              var marker = L.marker([nido.lat, nido.lng], {icon: customIcon}).addTo(map);
+              console.log('Marcador añadido en:', nido.lat, nido.lng);
+              
+              var markerContent = document.createElement('div');
+              var deleteBtn = '';
+              if (nido.user_id === userId) {
+                deleteBtn = "<button class='deleteNidoBtn' data-nido-id='" + nido.id + "' style='margin-top:5px; padding:5px 10px; cursor:pointer; background-color: #ff4444; color: white; border: none; border-radius: 3px;'>Eliminar</button>";
+              }
+              markerContent.innerHTML = "Nido de " + nido.tipo + "<br><img src='" + nido.foto_url + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br>" + deleteBtn;
+              
+              marker.bindPopup(markerContent);
+
+              if (nido.user_id === userId) {
+                setTimeout(function() {
+                  var btn = markerContent.querySelector('.deleteNidoBtn');
+                  if (btn) {
+                    btn.onclick = async function(evt) {
+                      evt.stopPropagation();
+                      await eliminarNido(nido.id);
+                      map.removeLayer(marker);
+                      map.closePopup();
+                    };
+                  }
+                }, 10);
+              }
+            } catch (e) {
+              console.error('Error procesando nido:', e);
+            }
+          });
+        } catch (e) {
+          console.error('Error en cargarNidos:', e);
+        }
+      }
+
+      // Función para eliminar nido
+      async function eliminarNido(nidoId) {
+        try {
+          let { error } = await supabase.from('nidos').delete().eq('id', nidoId);
+          if (error) {
+            alert('Error eliminando nido: ' + error.message);
+          }
+        } catch (e) {
+          console.error('Error eliminando:', e);
+          alert('Error eliminando nido: ' + e.message);
+        }
+      }
+
+      // Cargar nidos al abrir el mapa
+      setTimeout(() => {
+        cargarNidos();
+      }, 500);
+
+      map.on('click', function(e) {
+        // Verificar si el click está dentro de la comarca (forma de L)
+        if (!isInsideComarca(e.latlng.lat, e.latlng.lng)) {
+          alert('No puedes crear nidos fuera de la comarca');
+          return;
+        }
+
+        var optionsContent = document.createElement('div');
+        optionsContent.innerHTML = "<strong>Selecciona el tipo:</strong><br><button class='typeBtn' data-type='Golondrina' style='margin:5px 5px 5px 0; padding:5px 10px; cursor:pointer;'>Nido de Golondrina</button><button class='typeBtn' data-type='Otro' style='margin:5px; padding:5px 10px; cursor:pointer;'>Otro Nido</button><br><input type='file' id='photoInput' accept='image/*' style='margin-top:10px;'>";
+        
+        var popup = L.popup()
+          .setLatLng(e.latlng)
+          .setContent(optionsContent)
+          .openOn(map);
+        
+        var typeButtons = optionsContent.querySelectorAll('.typeBtn');
+        typeButtons.forEach(function(btn) {
+          btn.onclick = function(event) {
+            event.stopPropagation();
+            var type = this.getAttribute('data-type');
+            var photoInput = document.getElementById('photoInput');
+            var clickLat = e.latlng.lat;
+            var clickLng = e.latlng.lng;
+            
+            if (photoInput.files.length === 0) {
+              alert('Por favor selecciona una foto');
+              return;
+            }
+            
+            var file = photoInput.files[0];
+            
+            // Subir foto a Supabase Storage
+            var fileName = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + file.name;
+            
+            supabase.storage
+              .from('fotos')
+              .upload(fileName, file)
+              .then(uploadRes => {
+                if (uploadRes.error) {
+                  alert('Error subiendo foto: ' + uploadRes.error.message);
+                  return;
+                }
+
+                // Obtener URL pública de la foto
+                const { data: publicUrl } = supabase.storage
+                  .from('fotos')
+                  .getPublicUrl(fileName);
+
+                var photoUrl = publicUrl.publicUrl;
+
+                // Guardar nido en la base de datos
+                supabase.from('nidos').insert([
+                  {
+                    lat: e.latlng.lat,
+                    lng: e.latlng.lng,
+                    tipo: type,
+                    foto_url: photoUrl,
+                    user_id: userId
+                  }
+                ]).select().then(insertRes => {
+                  if (insertRes.error) {
+                    alert('Error guardando nido: ' + insertRes.error.message);
+                    console.error('Error insertando:', insertRes.error);
+                    return;
+                  }
+
+                  console.log('Nido insertado:', insertRes);
+
+                  if (!insertRes.data || insertRes.data.length === 0) {
+                    alert('Error: No se pudo obtener el ID del nido');
+                    console.error('No data returned from insert');
+                    return;
+                  }
+
+                  map.closePopup();
+
+                  var iconColor = type === 'Golondrina' ? '#0066FF' : '#00AA00';
+                  
+                  var customIcon = L.divIcon({
+                    html: '<div style="background-color:' + iconColor + '; width:30px; height:30px; border-radius:50%; border:3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [30, 30],
+                    className: 'custom-marker'
+                  });
+                  
+                  var nidoId = insertRes.data[0].id;
+                  var marker = L.marker([e.latlng.lat, e.latlng.lng], {icon: customIcon}).addTo(map);
+                  
+                  var markerContent = document.createElement('div');
+                  markerContent.innerHTML = "Nido de " + type + "<br><img src='" + photoUrl + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br><button class='deleteNidoBtn' data-nido-id='" + nidoId + "' style='margin-top:5px; padding:5px 10px; cursor:pointer; background-color: #ff4444; color: white; border: none; border-radius: 3px;'>Eliminar</button>";
+                  
+                  var deleteBtn = markerContent.querySelector('button');
+                  deleteBtn.onclick = async function(evt) {
+                    evt.stopPropagation();
+                    await eliminarNido(nidoId);
+                    map.removeLayer(marker);
+                    map.closePopup();
+                  };
+                  
+                  marker.bindPopup(markerContent).openPopup();
+                });
+              });
+          };
+        });
+      });
+    }
+
+    // Llamar a inicializar cuando el documento esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+      inicializar();
+    }
+  </script>
+</body>
+</html>
