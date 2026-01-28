@@ -207,6 +207,145 @@
     .report-btn:hover {
       background-color: #e68900;
     }
+    
+    /* Hamburger Menu Button */
+    .hamburger-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #333;
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 20px;
+      z-index: 999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .hamburger-button:hover {
+      background-color: #555;
+    }
+    
+    .hamburger-button span {
+      width: 25px;
+      height: 3px;
+      background-color: white;
+      border-radius: 2px;
+    }
+    
+    /* Info Panel */
+    #infoPanel {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    #infoPanel.active {
+      display: flex;
+    }
+    
+    .info-content {
+      background-color: white;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .info-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #0066FF;
+      padding-bottom: 10px;
+    }
+    
+    .info-header h1 {
+      margin: 0;
+      color: #333;
+      font-size: 28px;
+    }
+    
+    .info-close {
+      background-color: #ff4444;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .info-close:hover {
+      background-color: #cc0000;
+    }
+    
+    .info-subtitle {
+      font-size: 16px;
+      color: #0066FF;
+      font-weight: bold;
+      margin: 15px 0 10px 0;
+    }
+    
+    .info-text {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+      margin: 15px 0;
+    }
+    
+    .info-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .info-stat-card {
+      background-color: #f0f0f0;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #0066FF;
+      text-align: center;
+    }
+    
+    .info-stat-card h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 12px;
+    }
+    
+    .info-stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0066FF;
+    }
   </style>
 </head>
 <body>
@@ -282,6 +421,40 @@
     </div>
   </div>
   
+  <button class="hamburger-button" onclick="abrirInfoPanel()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  
+  <!-- Info Panel -->
+  <div id="infoPanel">
+    <div class="info-content">
+      <div class="info-header">
+        <h1>GoloNidos</h1>
+        <button class="info-close" onclick="cerrarInfoPanel()">Cerrar</button>
+      </div>
+      <h2 class="info-subtitle">Información del proyecto</h2>
+      <p class="info-text">Nuestro proyecto se centra en la investigación, observación y recopilación de información sobre los nidos de las aves, con especial atención a los construidos por las golondrinas, analizando sus características y ubicación.</p>
+      
+      <h2 class="info-subtitle" style="margin-top: 30px;">Estadísticas</h2>
+      <div class="info-stats-grid">
+        <div class="info-stat-card">
+          <h3>Total de Nidos</h3>
+          <div class="info-stat-value" id="infoStatTotalNidos">0</div>
+        </div>
+        <div class="info-stat-card">
+          <h3>Golondrinas</h3>
+          <div class="info-stat-value" id="infoStatGolondrinas">0</div>
+        </div>
+        <div class="info-stat-card">
+          <h3>Otros Nidos</h3>
+          <div class="info-stat-value" id="infoStatOtrosNidos">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <button class="admin-button" onclick="abrirAdminPanel()">⚙️</button>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -314,7 +487,7 @@
 
       var map = L.map('map').setView([37.4889, -2.7711], 15);
 
-      // Limitar el zoom y el desplazamiento del mapa a la comarca
+      // Limitar el zoom y el desplazamiento del mapa a Baza
       var mapBounds = L.latLngBounds(
         [37.470, -2.800],  // Suroeste
         [37.510, -2.730]   // Noreste
@@ -328,7 +501,7 @@
         attribution: '© OpenStreetMap'
       }).addTo(map);
 
-      // Límites de la comarca en forma de L
+      // Límites de Baza en forma de L
       var rect1 = {
         north: 37.505114,
         south: 37.475114,
@@ -343,8 +516,8 @@
         west: -2.755077
       };
 
-      // Función para verificar si un punto está dentro de la comarca
-      function isInsideComarca(lat, lng) {
+      // Función para verificar si un punto está dentro de Baza
+      function isInsideBaza(lat, lng) {
         var inRect1 = lat <= rect1.north && lat >= rect1.south && lng >= rect1.west && lng <= rect1.east;
         var inRect2 = lat <= rect2.north && lat >= rect2.south && lng >= rect2.west && lng <= rect2.east;
         return inRect1 || inRect2;
@@ -364,7 +537,7 @@
         fill: false
       }).addTo(map);
 
-      // Crear un límite rojo transparente fuera de la comarca
+      // Crear un límite rojo transparente fuera de Baza
       var maxBounds = {
         north: 38,
         south: 37,
@@ -551,9 +724,9 @@
       }, 500);
 
       map.on('click', function(e) {
-        // Verificar si el click está dentro de la comarca (forma de L)
-        if (!isInsideComarca(e.latlng.lat, e.latlng.lng)) {
-          alert('No puedes crear nidos fuera de la comarca');
+        // Verificar si el click está dentro de Baza (forma de L)
+        if (!isInsideBaza(e.latlng.lat, e.latlng.lng)) {
+          alert('No puedes crear nidos fuera de Baza');
           return;
         }
 
@@ -829,6 +1002,46 @@
         console.error('Error en cargarReportes:', e);
       }
     }
+
+    // Funciones para el Panel de Información
+    async function cargarEstadisticasInfo() {
+      try {
+        let { data: nidos, error } = await globalSupabase.from('nidos').select('*');
+        
+        if (error) {
+          console.error('Error cargando nidos:', error);
+          return;
+        }
+
+        if (!nidos) nidos = [];
+        
+        const totalNidos = nidos.length;
+        const golondrinas = nidos.filter(n => n.tipo === 'Golondrina').length;
+        const otrosNidos = nidos.filter(n => n.tipo === 'Otro').length;
+
+        document.getElementById('infoStatTotalNidos').textContent = totalNidos;
+        document.getElementById('infoStatGolondrinas').textContent = golondrinas;
+        document.getElementById('infoStatOtrosNidos').textContent = otrosNidos;
+      } catch (e) {
+        console.error('Error en cargarEstadisticasInfo:', e);
+      }
+    }
+
+    window.abrirInfoPanel = function() {
+      document.getElementById('infoPanel').classList.add('active');
+      cargarEstadisticasInfo();
+    };
+
+    window.cerrarInfoPanel = function() {
+      document.getElementById('infoPanel').classList.remove('active');
+    };
+
+    // Cerrar panel de información al hacer clic fuera de él
+    document.getElementById('infoPanel').addEventListener('click', function(e) {
+      if (e.target === this) {
+        window.cerrarInfoPanel();
+      }
+    });
 
     // Atajo de teclado para abrir panel admin
     document.addEventListener('keydown', function(event) {
