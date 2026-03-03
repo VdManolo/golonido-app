@@ -347,6 +347,21 @@
       font-weight: bold;
       color: #0066FF;
     }
+
+    .info-more-btn {
+      display: inline-block;
+      background-color: #0066FF;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .info-more-btn:hover {
+      background-color: #0052cc;
+    }
   </style>
 </head>
 <body>
@@ -452,6 +467,9 @@
           <h3>Otros Nidos</h3>
           <div class="info-stat-value" id="infoStatOtrosNidos">0</div>
         </div>
+      </div>
+      <div style="margin-top:20px; text-align:center;">
+        <a href="https://docs.google.com/document/d/1MyyEIx8ctZpn1zzcMoghmpR8qHPYG5M410pPIRH3n58/edit?usp=sharing" target="_blank" class="info-more-btn">Más información</a>
       </div>
     </div>
   </div>
@@ -931,6 +949,23 @@
       }
     };
 
+    window.eliminarReporte = async function(nidoId) {
+      if (confirm('¿Estás seguro de que deseas eliminar el reporte de este nido? El contador de reportes se reiniciará.')) {
+        try {
+          let { error } = await globalSupabase.from('nidos').update({ reports_count: 0 }).eq('id', nidoId);
+          if (error) {
+            alert('Error eliminando reporte: ' + error.message);
+          } else {
+            alert('Reporte eliminado correctamente');
+            cargarReportes();
+            cargarDatosAdmin();
+          }
+        } catch (e) {
+          console.error('Error eliminando reporte:', e);
+        }
+      }
+    };
+
     window.verDetallesNido = function(nidoId) {
       alert('Detalles del nido: ' + nidoId);
     };
@@ -996,6 +1031,7 @@
             <strong>Usuario:</strong> ${nido.user_id}<br>
             <img src="${nido.foto_url}" style="width: 150px; height: auto; margin-top: 10px; border-radius: 4px;"><br>
             <button class="admin-delete-btn" style="margin-top: 10px;" onclick="eliminarNidoAdmin('${nido.id}')">Eliminar Nido</button>
+            <button class="admin-delete-btn" style="margin-top: 10px; margin-left: 10px; background-color: #ff6600;" onclick="eliminarReporte('${nido.id}')">Eliminar Reporte</button>
           `;
           container.appendChild(div);
         });
