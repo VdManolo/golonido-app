@@ -362,10 +362,25 @@
     .info-more-btn:hover {
       background-color: #0052cc;
     }
+
+    /* ID overlay shown on marker click */
+    #mapIdOverlay {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      background-color: white;
+      padding: 6px 10px;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 12px;
+      z-index: 1001;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="mapIdOverlay"></div>
   
   <!-- Admin Panel -->
   <div id="adminPanel">
@@ -482,6 +497,19 @@
     // Variables globales
     let globalSupabase = null;
     let globalUserId = null;
+    let globalMap = null; // referencia al mapa para pan/zoom
+    let markersMap = {}; // id -> marker
+    
+    // mostrar/ocultar overlay con ID de nido
+    function showIdOverlay(id) {
+      const overlay = document.getElementById('mapIdOverlay');
+      overlay.textContent = 'ID: ' + id;
+      overlay.style.display = 'block';
+    }
+    function hideIdOverlay() {
+      const overlay = document.getElementById('mapIdOverlay');
+      overlay.style.display = 'none';
+    }
     
     // Esperar a que Supabase cargue
     function inicializar() {
@@ -505,6 +533,7 @@
       globalUserId = userId;
 
       var map = L.map('map').setView([37.4889, -2.7711], 15);
+      globalMap = map;
 
       // Limitar el zoom y el desplazamiento del mapa a Baza
       var mapBounds = L.latLngBounds(
@@ -655,6 +684,8 @@
 
               var marker = L.marker([nido.lat, nido.lng], {icon: customIcon}).addTo(map);
               console.log('Marcador añadido en:', nido.lat, nido.lng);
+              // guardar referencia
+              markersMap[nido.id] = marker;
               
               var markerContent = document.createElement('div');
               var deleteBtn = '';
@@ -666,6 +697,12 @@
               markerContent.innerHTML = tipoTexto + "<br><img src='" + nido.foto_url + "' style='width:200px; height:auto; margin-top:10px; border-radius:5px;'><br>" + deleteBtn + reportBtn;
               
               marker.bindPopup(markerContent);
+
+              // mostrar ID overlay al hacer clic en el marcador
+              marker.on('click', function() {
+                showIdOverlay(nido.id);
+              });
+              marker.on('popupclose', hideIdOverlay);
 
               if (nido.user_id === userId) {
                 setTimeout(function() {
@@ -828,6 +865,13 @@
                   
                   var nidoId = insertRes.data[0].id;
                   var marker = L.marker([e.latlng.lat, e.latlng.lng], {icon: customIcon}).addTo(map);
+                  markersMap[nidoId] = marker;
+
+                  // actualizar overlay cuando se hace clic en el marcador recién creado
+                  marker.on('click', function() {
+                    showIdOverlay(nidoId);
+                  });
+                  marker.on('popupclose', hideIdOverlay);
                   
                   var markerContent = document.createElement('div');
                   var tipoTexto = type === 'Golondrina' ? 'Nido de Golondrina' : 'Otro nido';
@@ -919,7 +963,7 @@
             <td>${fecha}</td>
             <td><span style="background-color: ${reports > 0 ? '#ffcccc' : '#ccffcc'}; padding: 4px 8px; border-radius: 3px;">${reports}</span></td>
             <td>
-              <button class="admin-view-btn" onclick="verDetallesNido('${nido.id}')">Ver</button>
+              <button class="admin-view-btn" onclick="verDetallesNido('${nido.id}', ${nido.lat}, ${nido.lng})">Ver</button>
               <button class="admin-delete-btn" onclick="eliminarNidoAdmin('${nido.id}')">Eliminar</button>
             </td>
           `;
@@ -966,8 +1010,19 @@
       }
     };
 
-    window.verDetallesNido = function(nidoId) {
-      alert('Detalles del nido: ' + nidoId);
+    window.verDetallesNido = function(nidoId, lat, lng) {
+      // ocultar panel admin y enfocarse en el mapa
+      document.getElementById('adminPanel').classList.remove('active');
+      if (globalMap && lat != null && lng != null) {
+        globalMap.setView([lat, lng], 17);
+      }
+      // mostrar overlay de ID también
+      showIdOverlay(nidoId);
+      // abrir popup si existe marcador
+      const mk = markersMap[nidoId];
+      if (mk) {
+        mk.openPopup();
+      }
     };
 
     function actualizarEstadisticas(nidos) {
